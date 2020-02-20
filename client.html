@@ -1,0 +1,136 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>WebSocket  Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="../bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="../js/jquery-1.12.3.min.js"></script>
+    <script src="../bootstrap-3.3.5/js/bootstrap.min.js"></script>
+</head>
+ 
+<body>
+<div class="vertical-center">
+    <div class="container">
+        <h1>Stock Chart over WebSocket</h1>
+        <button class="btn btn-primary">开始</button>
+        <button class="btn btn-danger">停止</button>
+        <table class="table" id="stockTable">
+            <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Price</th>
+            </tr>
+            </thead>
+            <tbody id="stockRows">
+            <tr>
+                <td>
+                    <h3>AAPL</h3></td>
+                <td id="AAPL">
+                    <h3><span class="label label-default">95.00</span></h3>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <h3>MSFT</h3></td>
+                <td id="MSFT">
+                    <h3><span class="label label-default">50.00</span></h3>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <h3>AMZN</h3></td>
+                <td id="AMZN">
+                    <h3><span class="label label-default">300.00</span></h3>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <h3>GOOG</h3></td>
+                <td id="GOOG">
+                    <h3><span class="label label-default">550.00</span></h3>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <h3>YHOO</h3></td>
+                <td id="YHOO">
+                    <h3><span class="label label-default">35.00</span></h3>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+    <script>
+	//客户端初始化websocket对象
+    var ws = new WebSocket("ws://localhost:9999");
+ 
+	//客户端发送的请求对象
+    var stock_request = { "stocks": ["AAPL", "MSFT", "AMZN", "GOOG", "YHOO"] };
+ 
+    var isClose = false; //通讯连接是否被关闭
+ 
+	//界面的初始化数据对象
+    var stocks = {
+        "AAPL": 0, "MSFT": 0, "AMZN": 0, "GOOG": 0, "YHOO": 0
+    };
+ 
+	//定义更新UI界面的函数
+    function updataUI() {
+		//websocket连接上时触发
+        ws.onopen = function (e) {
+            console.log('Connection to server opened');
+            isClose = false;
+            ws.send(JSON.stringify(stock_request));
+            console.log("sened a mesg");
+        }
+ 
+        // UI update function
+        var changeStockEntry = function (symbol, originalValue, newValue) {
+            var valElem = $('#' + symbol + ' span');
+            valElem.html(newValue.toFixed(2)); //toFixed() 方法可把 Number 四舍五入为指定小数位数的数字。
+            if (newValue < originalValue) {
+                valElem.addClass('label-danger');
+                valElem.removeClass('label-success');
+            } else if (newValue > originalValue) {
+                valElem.addClass('label-success');
+                valElem.removeClass('label-danger');
+            }
+        }
+ 
+        // websocket接收到服务端数据时触发
+        ws.onmessage = function (e) {
+            var stocksData = JSON.parse(e.data);  //字符串转JSON对象
+            console.log(stocksData);
+            for (var symbol in stocksData) {  //遍历对象属性，更改客户端界面数据
+                if (stocksData.hasOwnProperty(symbol)) {
+                    changeStockEntry(symbol, stocks[symbol], stocksData[symbol]);
+                    stocks[symbol] = stocksData[symbol];
+                }
+            }
+        };
+    }
+ 
+    updataUI();  //更新UI界面
+ 
+    $(".btn-primary").click(function() {  //开始按钮点击可以在断开后重连websocket
+        if (isClose) {
+            ws = new WebSocket("ws://localhost:9999");
+        }
+        updataUI();  //重连后更新UI界面
+    });
+ 
+    $(".btn-danger").click(function() {  //断开按钮可以关闭websocket连接
+        ws.close();
+    });
+ 
+	//触发websocket连接关闭事件
+    ws.onclose = function (e) {
+        console.log("Connection closed", e);
+        isClose = true;
+    };
+   
+ 
+    </script>
+</body>
+</html>
